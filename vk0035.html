@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВК PRO Configurator v3.0 (Valtec/Far/Rehau/Stout)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #2980b9;
+            --bg: #ecf0f1;
+            --panel-bg: #ffffff;
+            --border: #bdc3c7;
+            --header-bg: #dfe6e9;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 10px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        /* --- LAYOUT --- */
+        .app-container {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 15px;
+            height: 100%;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            background: var(--panel-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-content {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .sidebar-footer {
+            padding: 10px;
+            background: #f8f9fa;
+            border-top: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* --- CONTROLS --- */
+        fieldset {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+
+        legend {
+            font-weight: bold;
+            color: var(--accent);
+            padding: 0 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        label { color: #34495e; font-weight: 500; }
+
+        select, input[type="number"], input[type="text"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            width: 180px; /* Широкие поля */
+            font-size: 12px;
+        }
+
+        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
+
+        /* --- BATHROOM CARD --- */
+        .bath-card {
+            background: white;
+            border: 1px solid #dcdcdc;
+            border-left: 4px solid var(--accent);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .bath-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .device-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fcfcfc;
+            padding: 3px 5px;
+            border-bottom: 1px dashed #eee;
+        }
+        
+        .device-item label { display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer;}
+        .device-item input[type="number"] { width: 50px; text-align: center; }
+
+        /* --- MAIN TABLE --- */
+        .main-view {
+            background: var(--panel-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container {
+            overflow: auto;
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--header-bg);
+            color: #2d3436;
+            padding: 10px;
+            font-size: 12px;
+            border-bottom: 2px solid #b2bec3;
+            text-align: left;
+            z-index: 10;
+        }
+
+        tbody td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        tr:hover { background-color: #f1f2f6; }
+
+        .group-header td {
+            background-color: #ecf0f1;
+            font-weight: bold;
+            color: var(--primary);
+            text-transform: uppercase;
+            padding: 8px 10px;
+            border-top: 2px solid #bdc3c7;
+        }
+
+        /* Columns Widths */
+        .col-n { width: 40px; text-align: center; color: #7f8c8d; }
+        .col-code { width: 120px; font-family: monospace; font-weight: bold; color: #444; }
+        .col-brand { width: 100px; color: #7f8c8d; }
+        .col-unit { width: 50px; text-align: center; }
+        .col-qty { width: 60px; text-align: center; font-weight: bold; background: #fffde7; }
+        .col-note { width: 150px; font-size: 11px; color: #666; }
+
+        /* Buttons */
+        .btn {
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .btn-green { background-color: #27ae60; }
+        .btn-green:hover { background-color: #219150; }
+        .btn-blue { background-color: #2980b9; }
+        .btn-blue:hover { background-color: #2573a7; }
+        .btn-orange { background-color: #e67e22; }
+        
+        .io-panel { display: flex; gap: 5px; }
+        
+        /* Стилизация скроллбара */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <span>PRO Configurator v3.0</span>
+            <div class="io-panel">
+                <input type="file" id="importFile" style="display:none" onchange="App.importProject(this)" accept=".json,.xlsx">
+                <button class="btn btn-orange" onclick="document.getElementById('importFile').click()" title="Импорт из XLSX или JSON">📂</button>
+                <button class="btn btn-blue" onclick="App.exportJSON()" title="Сохранить JSON">💾</button>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <fieldset>
+                <legend>Базовые параметры системы</legend>
+                <div class="form-row">
+                    <label>Тип ввода:</label>
+                    <select id="sysType" onchange="App.onSystemChange()">
+                        <option value="door">От входной двери (Квартира)</option>
+                        <option value="riser">Стояковая система</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Диаметр ввода:</label>
+                    <select id="inletDia" onchange="App.update()">
+                        </select>
+                </div>
+                <div class="form-row">
+                    <label>Кол-во вводов (пар):</label>
+                    <input type="number" id="inletCount" value="1" min="1" onchange="App.update()">
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Производители</legend>
+                <div class="form-row">
+                    <label>Запорная арматура:</label>
+                    <select id="brandValve" onchange="App.update()">
+                        <option value="valtec">Valtec (Италия/Китай)</option>
+                        <option value="far">FAR (Италия)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Трубы и фитинги:</label>
+                    <select id="brandPipe" onchange="App.update()">
+                        <option value="rehau">Rehau RAUTITAN (Pex-a)</option>
+                        <option value="stout">Stout (Pex-a)</option>
+                        <option value="tece">TECEflex (Pex-c)</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Компоненты вводного узла</legend>
+                <div class="device-item"><label><input type="checkbox" id="comp_valve" checked onchange="App.update()"> Кран вводной</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_neptun" checked onchange="App.update()"> Система защиты от протечек</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_mud" checked onchange="App.update()"> Фильтр грязевик (косой)</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_meter" checked onchange="App.update()"> Счетчик воды</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_check" checked onchange="App.update()"> Обратный клапан</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_fine" checked onchange="App.update()"> Фильтр тонкой очистки (100мкм)</label></div>
+                <div class="device-item"><label><input type="checkbox" id="comp_red" checked onchange="App.update()"> Редуктор давления</label></div>
+                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
+                <div class="device-item" style="background:#e8f6fd;">
+                    <label><input type="checkbox" id="comp_viking" onchange="App.update()"> <b>Магистральный фильтр (Викинг 300)</b></label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Зоны водоснабжения</legend>
+                <div class="form-row">
+                    <label>Количество санузлов:</label>
+                    <input type="number" id="bathCount" value="1" min="1" max="10" onchange="App.updateBathCount()">
+                </div>
+                <div id="bathContainer">
+                    </div>
+            </fieldset>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn btn-green" style="grid-column: span 2;" onclick="App.exportExcel()">
+                <span>📄</span> Экспорт в Excel (Малаховка)
+            </button>
+        </div>
+    </aside>
+
+    <main class="main-view">
+        <div class="table-container">
+            <table id="specTable">
+                <thead>
+                    <tr>
+                        <th class="col-n">№</th>
+                        <th>Наименование и техническая характеристика</th>
+                        <th class="col-code">Артикул</th>
+                        <th class="col-brand">Произв.</th>
+                        <th class="col-unit">Ед.</th>
+                        <th class="col-qty">Кол.</th>
+                        <th class="col-note">Примечание</th>
+                    </tr>
+                </thead>
+                <tbody id="specBody">
+                    </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<script>
+// ===============================================
+// 1. БАЗА ДАННЫХ (АРТИКУЛЫ)
+// ===============================================
+const DB = {
+    // === АРМАТУРА И УЗЛЫ ===
+    armature: {
+        valtec: {
+            brand: 'VALTEC',
+            valve: { name: 'Кран шаровой с полусгоном, 1/2"', art: 'VT.227.N.04', brand: 'VALTEC' },
+            valveW: { name: 'Кран шаровой, вн.-нар., 1/2" (бабочка)', art: 'VT.218.N.04', brand: 'VALTEC' }, // Для бойлера
+            mud: { name: 'Фильтр косой (грязевик), 500 мкм, 1/2"', art: 'VT.190.N.04', brand: 'VALTEC' },
+            fine: { name: 'Фильтр промывной универсальный 100 мкм, 1/2"', art: 'VT.389.N.04', brand: 'VALTEC' }, 
+            red: { name: 'Редуктор давления мембранный, 1-7 бар, 1/2"', art: 'VT.085.N.0407', brand: 'VALTEC' },
+            check: { name: 'Клапан обратный, 1/2"', art: 'VT.161.N.04', brand: 'VALTEC' },
+            collector: { base: 'VTc.560.N', name: 'Коллектор Valtec с рег. вент. 3/4"', brand: 'VALTEC' },
+            elbowMale: { name: 'Угольник прямой НВ 3/4"', art: 'VTr.092.N.0005', brand: 'VALTEC' }, 
+            elbowFem: { name: 'Угольник прямой ВР 3/4"', art: 'VTr.090.N.0005', brand: 'VALTEC' }, 
+            cap: { name: 'Заглушка коллектора 3/4"', art: 'VTr.590.N.0005', brand: 'VALTEC' },
+            bracket: { name: 'Кронштейны для коллектора 3/4" (пара)', art: 'VTc.130.N.0500', brand: 'VALTEC' }
+        },
+        far: {
+            brand: 'FAR',
+            valve: { name: 'Кран шаровой полнопроходной 1/2" (ручка)', art: 'FA 3000 12', brand: 'FAR' },
+            valveW: { name: 'Кран шаровой 1/2" (бабочка)', art: 'FA 3010 12', brand: 'FAR' },
+            mud: { name: 'Фильтр грубой очистки 1/2" (бронза)', art: 'FA 3900 12', brand: 'FAR' },
+            fine: { name: 'Фильтр промывной 100 мкм 1/2" с манометром', art: 'FA 3938 12', brand: 'FAR' },
+            red: { name: 'Редуктор давления 1/2" (с манометром)', art: 'FA 2815 12', brand: 'FAR' },
+            check: { name: 'Клапан обратный 1/2"', art: 'FA 2100 12', brand: 'FAR' },
+            collector: { base: 'FA 3825', name: 'Коллектор FAR Multifar 3/4"', brand: 'FAR' }, 
+            elbowMale: { name: 'Угольник НВ 3/4"', art: 'FA 5050 34', brand: 'FAR' }, 
+            elbowFem: { name: 'Угольник ВР 3/4"', art: 'FA 5000 34', brand: 'FAR' },
+            cap: { name: 'Заглушка коллектора 3/4"', art: 'FA 4150 34', brand: 'FAR' },
+            bracket: { name: 'Кронштейны для коллектора 3/4"', art: 'FA 7475', brand: 'FAR' }
+        }
+    },
+
+    // === ТРУБЫ И ФИТИНГИ ===
+    pipes: {
+        rehau: {
+            brand: 'REHAU',
+            p16: { name: 'Труба RAUTITAN Flex 16,2х2,6мм', art: '130121-100', brand: 'REHAU' },
+            p20: { name: 'Труба RAUTITAN Flex 20х2,9мм', art: '130131-100', brand: 'REHAU' },
+            p25: { name: 'Труба RAUTITAN Flex 25х3,5мм', art: '11303811001', brand: 'REHAU' },
+            f16: { name: 'Переходник с накидной гайкой 16-G1/2 (Евроконус)', art: '139551-002', brand: 'REHAU' },
+            f20: { name: 'Переходник с накидной гайкой 20-G1/2 (Евроконус)', art: '139561-002', brand: 'REHAU' },
+            s16: { name: 'Угольник настенный 16-1/2" Rp', art: '11096631001', brand: 'REHAU' },
+            s20: { name: 'Угольник настенный 20-1/2" Rp', art: '11096781001', brand: 'REHAU' },
+            sInst: { name: 'Угольник для инсталляции 16-1/2"', art: '14563533001', brand: 'REHAU' },
+            tee25_20: { name: 'Тройник PX 25-20-25', art: '11080321001', brand: 'REHAU' },
+            tee25_25: { name: 'Тройник PX 25-25-25', art: '11080331001', brand: 'REHAU' },
+            sl16: { name: 'Гильза PX 16', art: '11600011001', brand: 'REHAU' },
+            sl20: { name: 'Гильза PX 20', art: '11600021001', brand: 'REHAU' },
+            sl25: { name: 'Гильза PX 25', art: '11600031001', brand: 'REHAU' },
+            boilerF: { name: 'Переходник ВР 20-1/2"', art: '13660681001', brand: 'REHAU' },
+            boilerN: { name: 'Переходник нак. гайка 20-3/4"', art: '14563383001', brand: 'REHAU' },
+            bracket: { name: 'Планка монтажная 75/150', art: '11055293008', brand: 'REHAU' }
+        },
+        stout: {
+            brand: 'STOUT',
+            p16: { name: 'Труба PEX-a 16х2.2 серая', art: 'SPX-0002-001622', brand: 'STOUT' },
+            p20: { name: 'Труба PEX-a 20х2.8 серая', art: 'SPX-0002-002028', brand: 'STOUT' },
+            p25: { name: 'Труба PEX-a 25х3.5 серая', art: 'SPX-0002-002535', brand: 'STOUT' },
+            f16: { name: 'Фитинг Евроконус 16-1/2"', art: 'SFA-0020-001612', brand: 'STOUT' },
+            f20: { name: 'Фитинг Евроконус 20-1/2"', art: 'SFA-0020-002012', brand: 'STOUT' },
+            s16: { name: 'Угольник настенный 16-1/2"', art: 'SFA-0026-001612', brand: 'STOUT' },
+            s20: { name: 'Угольник настенный 20-1/2"', art: 'SFA-0026-002012', brand: 'STOUT' },
+            sInst: { name: 'Угольник настенный удлиненный 16-1/2"', art: 'SFA-0027-001612', brand: 'STOUT' },
+            tee25_20: { name: 'Тройник 25-20-25', art: 'SFA-0004-252025', brand: 'STOUT' },
+            tee25_25: { name: 'Тройник 25-25-25', art: 'SFA-0004-002525', brand: 'STOUT' },
+            sl16: { name: 'Гильза монтажная 16', art: 'SFA-0001-000016', brand: 'STOUT' },
+            sl20: { name: 'Гильза монтажная 20', art: 'SFA-0001-000020', brand: 'STOUT' },
+            sl25: { name: 'Гильза монтажная 25', art: 'SFA-0001-000025', brand: 'STOUT' },
+            boilerF: { name: 'Переходник ВР 20-1/2"', art: 'SFA-0013-002012', brand: 'STOUT' },
+            boilerN: { name: 'Переходник НГ 20-3/4"', art: 'SFA-0016-002034', brand: 'STOUT' },
+            bracket: { name: 'Планка монтажная', art: 'SMB-0001-000000', brand: 'STOUT' }
+        },
+        tece: {
+            brand: 'TECE',
+            p16: { name: 'Труба TECEflex 16', art: '702016', brand: 'TECE' },
+            p20: { name: 'Труба TECEflex 20', art: '702020', brand: 'TECE' },
+            p25: { name: 'Труба TECEflex 25', art: '702025', brand: 'TECE' },
+            f16: { name: 'Адаптер Евроконус 16', art: '713516', brand: 'TECE' },
+            f20: { name: 'Адаптер Евроконус 20', art: '713020', brand: 'TECE' },
+            s16: { name: 'Угольник настенный 16-1/2"', art: '708501', brand: 'TECE' },
+            s20: { name: 'Угольник настенный 20-1/2"', art: '708502', brand: 'TECE' },
+            sInst: { name: 'Угольник настенный длинный 16-1/2"', art: '708510', brand: 'TECE' },
+            tee25_20: { name: 'Тройник 25-20-25', art: '710508', brand: 'TECE' }, 
+            tee25_25: { name: 'Тройник 25-25-25', art: '710509', brand: 'TECE' },
+            sl16: { name: 'Гильза пресс 16', art: '734516', brand: 'TECE' },
+            sl20: { name: 'Гильза пресс 20', art: '734520', brand: 'TECE' },
+            sl25: { name: 'Гильза пресс 25', art: '734525', brand: 'TECE' },
+            boilerF: { name: 'Переходник ВР 20-1/2"', art: '706503', brand: 'TECE' },
+            boilerN: { name: 'Переходник НГ 20-3/4"', art: '706006', brand: 'TECE' },
+            bracket: { name: 'Планка монтажная', art: '720526', brand: 'TECE' }
+        }
+    },
+
+    // === ОБЩЕЕ ОБОРУДОВАНИЕ (CONST) ===
+    common: {
+        meter: { name: 'Водосчетчик импульсный 1/2" VLF-15U-I', art: 'VLF-15U-I', brand: 'VALTEC' },
+        neptun: { name: 'Система защиты Neptun Smart+ (2 крана 1/2")', art: 'Neptun Smart', brand: 'Теплолюкс' },
+        viking: { name: 'Фильтр магистральный Аквафор Викинг 300 (корпус)', art: 'Viking 300', brand: 'Аквафор' },
+        vikingCartCold: { name: 'Сменный модуль для холодной воды', art: 'B520-13', brand: 'Аквафор' },
+        vikingCartHot: { name: 'Сменный модуль для горячей воды', art: 'B520-14', brand: 'Аквафор' },
+        
+        // Канализация (Ostendorf)
+        p50: { name: 'Труба HT 50 мм', art: '112040', brand: 'Ostendorf' },
+        p110: { name: 'Труба HT 110 мм', art: '115040', brand: 'Ostendorf' },
+        el50_87: { name: 'Отвод 87° DN 50', art: '112140', brand: 'Ostendorf' },
+        el50_45: { name: 'Отвод 45° DN 50', art: '112120', brand: 'Ostendorf' },
+        tee50: { name: 'Тройник 50/50/45°', art: '112200', brand: 'Ostendorf' },
+        el110_45: { name: 'Отвод 45° DN 110', art: '115120', brand: 'Ostendorf' },
+        tee110_50: { name: 'Тройник 110/50/45°', art: '115220', brand: 'Ostendorf' },
+        tee110: { name: 'Тройник 110/110/87°', art: '115400', brand: 'Ostendorf' },
+        trans: { name: 'Редукция 110/50', art: '115710', brand: 'Ostendorf' },
+        trap: { name: 'Трап HL510N DN50', art: 'HL510N', brand: 'HL' },
+        
+        // Расходка
+        plug: { name: 'Заглушка опрессовочная 1/2" (Син+Кр)', art: 'VTp.792.M.04', brand: 'VALTEC' },
+        sleeveB: { name: 'Втулка защитная Синяя (упак)', art: 'VT.VZT.16.B', brand: 'VALTEC' },
+        sleeveR: { name: 'Втулка защитная Красная (упак)', art: 'VT.VZT.16.R', brand: 'VALTEC' },
+        hose: { name: 'Гибкая подводка 1/2" 40см', art: 'STOUT-400', brand: 'STOUT' }
+    }
+};
+
+// ===============================================
+// 2. LOGIC
+// ===============================================
+const App = {
+    state: {
+        bathrooms: [],
+        config: {
+            sysType: 'door',
+            inletDia: '20',
+            inletCount: 1,
+            brandValve: 'valtec',
+            brandPipe: 'rehau',
+            components: {
+                valve: true, neptun: true, mud: true, meter: true, 
+                check: true, fine: true, red: true, viking: false
+            }
+        }
+    },
+
+    init() {
+        this.onSystemChange(); // Init input select
+        this.updateBathCount(); // Init bathrooms
+    },
+
+    // --- Events ---
+    onSystemChange() {
+        const type = document.getElementById('sysType').value;
+        const sel = document.getElementById('inletDia');
+        sel.innerHTML = '';
+        
+        if (type === 'riser') {
+            sel.add(new Option('15 мм (1/2")', '15'));
+            sel.value = '15'; // Force 15
+        } else {
+            sel.add(new Option('20 мм (3/4")', '20'));
+            sel.add(new Option('25 мм (1")', '25'));
+            sel.value = '20';
+        }
+        this.update();
+    },
+
+    updateBathCount() {
+        const count = parseInt(document.getElementById('bathCount').value);
+        const container = document.getElementById('bathContainer');
+        
+        // Sync Array
+        if (this.state.bathrooms.length < count) {
+            for (let i = this.state.bathrooms.length; i < count; i++) {
+                this.state.bathrooms.push({
+                    id: i,
+                    dev: { inst: 1, wash: 1, bath: 1, shower: 0, kitchen: 0, trap: 0 },
+                    dist: 5,
+                    boiler: false
+                });
+            }
+        } else {
+            this.state.bathrooms = this.state.bathrooms.slice(0, count);
+        }
+        
+        this.renderBathUI();
+        this.update();
+    },
+
+    renderBathUI() {
+        const c = document.getElementById('bathContainer');
+        c.innerHTML = '';
+        this.state.bathrooms.forEach((b, idx) => {
+            const el = document.createElement('div');
+            el.className = 'bath-card';
+            el.innerHTML = `
+                <div class="bath-header">
+                    <span>Санузел №${idx+1}</span>
+                    <span>L = <input type="number" value="${b.dist}" onchange="App.setBathProp(${idx}, 'dist', this.value)" style="width:40px"> м</span>
+                </div>
+                <div class="device-group">
+                    <div class="device-item"><label>🚽 Инсталляция</label> <input type="number" value="${b.dev.inst}" min="0" onchange="App.setDev(${idx}, 'inst', this.value)"></div>
+                    <div class="device-item"><label>🚰 Умывальник</label> <input type="number" value="${b.dev.wash}" min="0" onchange="App.setDev(${idx}, 'wash', this.value)"></div>
+                    <div class="device-item"><label>🛁 Ванна</label> <input type="number" value="${b.dev.bath}" min="0" onchange="App.setDev(${idx}, 'bath', this.value)"></div>
+                    <div class="device-item"><label>🚿 Душ</label> <input type="number" value="${b.dev.shower}" min="0" onchange="App.setDev(${idx}, 'shower', this.value)"></div>
+                    <div class="device-item"><label>🍽 Кух. мойка</label> <input type="number" value="${b.dev.kitchen}" min="0" onchange="App.setDev(${idx}, 'kitchen', this.value)"></div>
+                    <div class="device-item"><label>💧 Трап / Слив</label> <input type="number" value="${b.dev.trap}" min="0" onchange="App.setDev(${idx}, 'trap', this.value)"></div>
+                    <div class="device-item" style="margin-top:5px; background:none; border:none;">
+                        <label><input type="checkbox" ${b.boiler ? 'checked' : ''} onchange="App.setBathProp(${idx}, 'boiler', this.checked)"> 🔥 Водонагреватель</label>
+                    </div>
+                </div>
+            `;
+            c.appendChild(el);
+        });
+    },
+
+    setBathProp(idx, prop, val) {
+        if(prop === 'dist') this.state.bathrooms[idx].dist = parseFloat(val);
+        if(prop === 'boiler') this.state.bathrooms[idx].boiler = val;
+        this.update();
+    },
+    setDev(idx, type, val) {
+        this.state.bathrooms[idx].dev[type] = parseInt(val);
+        this.update();
+    },
+
+    // --- Data Collection from UI ---
+    readConfig() {
+        this.state.config.sysType = document.getElementById('sysType').value;
+        this.state.config.inletDia = document.getElementById('inletDia').value;
+        this.state.config.inletCount = parseInt(document.getElementById('inletCount').value);
+        this.state.config.brandValve = document.getElementById('brandValve').value;
+        this.state.config.brandPipe = document.getElementById('brandPipe').value;
+        
+        const c = this.state.config.components;
+        c.valve = document.getElementById('comp_valve').checked;
+        c.neptun = document.getElementById('comp_neptun').checked;
+        c.mud = document.getElementById('comp_mud').checked;
+        c.meter = document.getElementById('comp_meter').checked;
+        c.check = document.getElementById('comp_check').checked;
+        c.fine = document.getElementById('comp_fine').checked;
+        c.red = document.getElementById('comp_red').checked;
+        c.viking = document.getElementById('comp_viking').checked;
+    },
+
+    // --- MAIN CALCULATION ENGINE ---
+    update() {
+        this.readConfig();
+        const cfg = this.state.config;
+        const spec = [];
+        
+        // Helper to add item
+        const add = (obj, qty, note='') => {
+            if(!obj || qty <= 0) return;
+            // Поиск дубля по Артикулу
+            const exist = spec.find(i => i.art === obj.art && i.type !== 'header');
+            if(exist) {
+                exist.qty += qty;
+                if(note && !exist.note.includes(note)) exist.note += `, ${note}`;
+            } else {
+                spec.push({...obj, qty: qty, note: note});
+            }
+        };
+        const header = (name) => spec.push({type:'header', name});
+
+        const B_VALVE = DB.armature[cfg.brandValve];
+        const B_PIPE = DB.pipes[cfg.brandPipe];
+
+        // 1. УЗЕЛ ВВОДА
+        header(`1. Узел ввода и учета (${cfg.brandValve.toUpperCase()})`);
+        const pairs = cfg.inletCount; // 1 пара = ГВС+ХВС
+        const lines = pairs * 2; // Всего труб
+
+        if(cfg.components.valve) add(B_VALVE.valve, lines, 'Вводной кран');
+        if(cfg.components.neptun) add(DB.common.neptun, pairs, '1 компл. на стояк');
+        if(cfg.components.mud) add(B_VALVE.mud, lines);
+        if(cfg.components.meter) add(DB.common.meter, lines); // Счетчики всегда универсальные
+        if(cfg.components.fine) add(B_VALVE.fine, lines);
+        if(cfg.components.red) add(B_VALVE.red, lines);
+        if(cfg.components.check) add(B_VALVE.check, lines);
+        if(cfg.components.viking) {
+            add(DB.common.viking, lines, 'Корпус 300мм');
+            add(DB.common.vikingCartCold, pairs, 'ХВС');
+            add(DB.common.vikingCartHot, pairs, 'ГВС');
+        }
+
+        // Кран после узла перед коллектором (отсечной)
+        if(cfg.components.valve) add(B_VALVE.valve, lines, 'Перед коллектором');
+        
+        // Угольник для входа в коллектор (по требованию)
+        const bathsCount = this.state.bathrooms.length;
+        add(B_VALVE.elbowMale, bathsCount * 2, 'Вход коллектора'); 
+
+        // 2. КОЛЛЕКТОРЫ
+        header('2. Распределительные коллекторы');
+        // Кронштейны
+        add(B_VALVE.bracket, bathsCount, 'Пара на шкаф');
+
+        this.state.bathrooms.forEach(b => {
+            const prefix = `СУ${b.id+1}`;
+            // ГВС: Умыв + Мойка + Душ + Ванна + (Бойлер?)
+            let hws = b.dev.wash + b.dev.kitchen + b.dev.shower + b.dev.bath + (b.boiler ? 1 : 0);
+            // ХВС: Все + Инст + Бойлер
+            let cws = hws + b.dev.inst; // (Бойлер уже учтен в базе ГВС, но для ХВС нужен отдельный отвод на вход бойлера)
+            
+            this.calcCollector(hws, B_VALVE, add, prefix+' ГВС');
+            this.calcCollector(cws, B_VALVE, add, prefix+' ХВС');
+        });
+
+        // 3. ТРУБЫ И ФИТИНГИ
+        header(`3. Трубопроводная система (${cfg.brandPipe.toUpperCase()})`);
+        
+        let len16 = 0, len20 = 0, len25 = 0;
+        let sleeve16 = 0, sleeve20 = 0, sleeve25 = 0;
+        let tee25_20 = 0, tee25_25 = 0;
+
+        // Магистраль 25мм (если выбрана)
+        if(cfg.inletDia === '25') {
+            const totalDist = this.state.bathrooms.reduce((sum, b) => sum + b.dist, 0);
+            len25 += totalDist * 2; // Туда-обратно (ГВС+ХВС)
+            
+            // Тройники
+            if(bathsCount > 1) {
+                const splits = (bathsCount - 1) * 2; // Количество разветвлений
+                // Логика: Если идем 25 трубой и отвод на коллектор 20 (через угол), то тройник 25-20-25
+                add(B_PIPE.tee25_20, splits, 'Разветвление на СУ');
+                sleeve25 += splits * 2; // на проход
+                sleeve20 += splits; // на отвод
+            }
+        }
+
+        this.state.bathrooms.forEach(b => {
+            const note = `СУ${b.id+1}`;
+            const dev = b.dev;
+            
+            // 20 труба (Ванна, Душ)
+            const pts20 = dev.bath + dev.shower;
+            if(pts20 > 0) {
+                len20 += pts20 * (b.dist + 2.5);
+                add(B_PIPE.s20, pts20, note); // Водорозетка 20
+                add(B_PIPE.f20, pts20, note); // Евроконус 20
+                sleeve20 += pts20 * 2;
+            }
+
+            // 16 труба (Остальное)
+            const pts16 = dev.wash + dev.kitchen;
+            const ptsInst = dev.inst;
+            if((pts16 + ptsInst) > 0) {
+                len16 += (pts16 + ptsInst) * (b.dist + 2.5);
+                if(pts16 > 0) add(B_PIPE.s16, pts16, note);
+                if(ptsInst > 0) add(B_PIPE.sInst, ptsInst, note);
+                add(B_PIPE.f16, pts16 + ptsInst, note);
+                sleeve16 += (pts16 + ptsInst) * 2;
+            }
+            
+            // Бойлер
+            if(b.boiler) {
+                add(B_VALVE.valveW, 2, 'Бойлер'); // Краны
+                add(B_VALVE.elbowFem, 2, 'Бойлер'); // Уголки Valtec
+                add(B_PIPE.boilerF, 2, 'Rehau ВР'); // 20-1/2 ВР
+                add(B_PIPE.boilerN, 2, 'Rehau Гайка'); // 20-3/4 Гайка
+                
+                len20 += (b.dist + 2) * 2; // Трасса 20мм
+                sleeve20 += 4;
+            } else {
+                add(B_VALVE.cap, 2, 'Заглушки коллектора');
+            }
+
+            // Планки
+            const mix = dev.wash + dev.bath + dev.shower;
+            if(mix > 0) add(B_PIPE.bracket, mix, 'Для смесителей');
+        });
+
+        // Add Pipes totals
+        if(len25 > 0) add(B_PIPE.p25, Math.ceil(len25), 'Магистраль');
+        if(len20 > 0) add(B_PIPE.p20, Math.ceil(len20));
+        if(len16 > 0) add(B_PIPE.p16, Math.ceil(len16));
+        
+        // Add Sleeves totals (с учетом тройников)
+        if(sleeve25 > 0) add(B_PIPE.sl25, sleeve25);
+        if(sleeve20 > 0) add(B_PIPE.sl20, sleeve20);
+        if(sleeve16 > 0) add(B_PIPE.sl16, sleeve16);
+
+        // 4. САНТЕХНИКА И КАНАЛИЗАЦИЯ (Сгруппировано)
+        header('4. Сантехприборы и Канализация');
+        
+        // Считаем трапы и подводу
+        const totalTraps = this.state.bathrooms.reduce((sum, b) => sum + b.dev.trap, 0);
+        if(totalTraps > 0) add(DB.common.trap, totalTraps, 'Ду50');
+        
+        const totalWash = this.state.bathrooms.reduce((sum, b) => sum + b.dev.wash, 0);
+        if(totalWash > 0) add(DB.common.hose, totalWash * 2, 'Подводка смесителя');
+
+        // Канализация
+        let sew50 = 0, sew110 = 0;
+        let el50 = 0, el110 = 0, tee50 = 0, tee110 = 0, trans = 0;
+
+        this.state.bathrooms.forEach(b => {
+            // 110
+            if(b.dev.inst > 0) {
+                sew110 += b.dev.inst * 2;
+                el110 += b.dev.inst * 2; 
+                tee110 += b.dev.inst;
+            }
+            // 50
+            const p50 = b.dev.wash + b.dev.kitchen + b.dev.bath + b.dev.shower + b.dev.trap;
+            if(p50 > 0) {
+                sew50 += p50 * 2.5;
+                el50 += p50 * 3; // 1х87 + 2х45
+                tee50 += p50;
+                trans += 1;
+                tee110 += 1; // 110-50
+            }
+        });
+        
+        if(sew110 > 0) add(DB.common.p110, Math.ceil(sew110));
+        if(sew50 > 0) add(DB.common.p50, Math.ceil(sew50));
+        if(el110 > 0) add(DB.common.el110_45, el110);
+        if(el50 > 0) {
+            add(DB.common.el50_87, Math.ceil(el50/3));
+            add(DB.common.el50_45, Math.ceil(el50*2/3));
+        }
+        if(tee110 > 0) add(DB.common.tee110_50, tee110); // Условно все переходные
+        if(tee50 > 0) add(DB.common.tee50, tee50);
+        if(trans > 0) add(DB.common.trans, trans);
+
+        // 5. РАСХОДКА
+        header('5. Расходные материалы');
+        const points = sleeve16 + sleeve20 + sleeve25;
+        if(points > 0) {
+            add(DB.common.plug, Math.ceil(points/4), 'Заглушки опрессовки');
+            add(DB.common.sleeveB, Math.ceil(points/20), 'На изоляцию (пачка)');
+            add(DB.common.sleeveR, Math.ceil(points/20));
+        }
+
+        this.renderTable(spec);
+        this.currentSpec = spec; // Save for export
+    },
+
+    calcCollector(ports, brandObj, addFn, note) {
+        if(ports <= 0) return;
+        // Подбор как 4+3+2
+        let remain = ports;
+        while(remain > 0) {
+            let p = 0;
+            // Valtec/Far обычно имеют 2,3,4 выхода.
+            // Если нужно 5 -> 3+2. Если 6 -> 3+3 или 4+2.
+            if(remain >= 4) p = 4;
+            else if(remain === 3) p = 3;
+            else p = 2;
+            
+            // Динамическое создание артикула
+            let art = '';
+            let name = '';
+            
+            if(brandObj.collector.base.includes('VTc')) {
+                art = `${brandObj.collector.base}.050${p}`;
+                name = `${brandObj.collector.name} ${p} вых.`;
+            } else {
+                art = `${brandObj.collector.base} ${p}`; // FAR dummy
+                name = `${brandObj.collector.name} ${p} вых.`;
+            }
+            
+            addFn({name, art, brand: brandObj.brand}, 1, note);
+            remain -= p;
+        }
+    },
+
+    renderTable(list) {
+        const tb = document.getElementById('specBody');
+        tb.innerHTML = '';
+        let n = 1;
+        list.forEach(item => {
+            if(item.type === 'header') {
+                tb.innerHTML += `<tr class="group-header"><td colspan="7">${item.name}</td></tr>`;
+            } else {
+                tb.innerHTML += `
+                    <tr>
+                        <td class="col-n">${n++}</td>
+                        <td>${item.name}</td>
+                        <td class="col-code">${item.art}</td>
+                        <td class="col-brand">${item.brand || ''}</td>
+                        <td class="col-unit">шт</td>
+                        <td class="col-qty">${item.qty}</td>
+                        <td class="col-note">${item.note}</td>
+                    </tr>
+                `;
+            }
+        });
+    },
+
+    // --- IMPORT / EXPORT ---
+    exportJSON() {
+        const dataStr = JSON.stringify(this.state);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "project_vk_pro.json";
+        a.click();
+    },
+
+    exportExcel() {
+        if(!this.currentSpec) return;
+        
+        const wb = XLSX.utils.book_new();
+        
+        // 1. Visible Specification Sheet
+        const ws_data = [
+            ["Позиция", "Наименование и техническая характеристика", "Код оборудования", "Завод-изготовитель", "Ед. изм.", "Количество", "Примечание"]
+        ];
+        
+        let n = 1;
+        this.currentSpec.forEach(i => {
+            if(i.type === 'header') {
+                ws_data.push(["", i.name.toUpperCase(), "", "", "", "", ""]);
+            } else {
+                ws_data.push([n++, i.name, i.art, i.brand || '', 'шт', i.qty, i.note]);
+            }
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        ws['!cols'] = [{wch:8}, {wch:60}, {wch:20}, {wch:15}, {wch:8}, {wch:10}, {wch:20}];
+        XLSX.utils.book_append_sheet(wb, ws, "Спецификация");
+
+        // 2. HIDDEN CONFIG SHEET (Save State inside Excel!)
+        const configData = [[JSON.stringify(this.state)]];
+        const wsConfig = XLSX.utils.aoa_to_sheet(configData);
+        XLSX.utils.book_append_sheet(wb, wsConfig, "PROJECT_DATA");
+
+        XLSX.writeFile(wb, "Spec_Malakhovka_Style.xlsx");
+    },
+
+    importProject(input) {
+        const file = input.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        
+        if(file.name.endsWith('.json')) {
+            reader.onload = (e) => {
+                this.state = JSON.parse(e.target.result);
+                this.refreshUIfromState();
+            };
+            reader.readAsText(file);
+        } else {
+            // Excel Import
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                
+                // Try to find hidden sheet
+                if(wb.SheetNames.includes("PROJECT_DATA")) {
+                    const ws = wb.Sheets["PROJECT_DATA"];
+                    const jsonStr = ws['A1'].v;
+                    this.state = JSON.parse(jsonStr);
+                    this.refreshUIfromState();
+                    alert("Проект успешно загружен из Excel!");
+                } else {
+                    alert("Ошибка: В этом Excel файле нет данных проекта (PROJECT_DATA).");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    },
+
+    refreshUIfromState() {
+        // Restore UI controls
+        const c = this.state.config;
+        document.getElementById('sysType').value = c.sysType;
+        this.onSystemChange(); // reset dia options
+        document.getElementById('inletDia').value = c.inletDia;
+        document.getElementById('inletCount').value = c.inletCount;
+        document.getElementById('brandValve').value = c.brandValve;
+        document.getElementById('brandPipe').value = c.brandPipe;
+        document.getElementById('bathCount').value = this.state.bathrooms.length;
+        
+        document.getElementById('comp_valve').checked = c.components.valve;
+        document.getElementById('comp_neptun').checked = c.components.neptun;
+        document.getElementById('comp_mud').checked = c.components.mud;
+        document.getElementById('comp_meter').checked = c.components.meter;
+        document.getElementById('comp_check').checked = c.components.check;
+        document.getElementById('comp_fine').checked = c.components.fine;
+        document.getElementById('comp_red').checked = c.components.red;
+        document.getElementById('comp_viking').checked = c.components.viking;
+
+        this.renderBathUI();
+        this.update();
+    }
+};
+
+// Start
+document.addEventListener("DOMContentLoaded", () => {
+    App.init();
+});
+
+</script>
+</body>
+</html>
