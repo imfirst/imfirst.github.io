@@ -1,7 +1,8 @@
 name: Generate file listing
+
 on:
   push:
-    branches: [main]  # или ваша основная ветка
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -9,21 +10,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate index.html
         run: |
-          echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Files</title></head><body><h1>Files in this repo</h1><ul>" > index.html
-          find . -type f ! -name "index.html" ! -path "./.git/*" ! -path "./.github/*" -exec basename {} \; | sort | while read file; do
-            echo "<li><a href='$file'>$file</a></li>" >> index.html
+          echo "<!DOCTYPE html>" > index.html
+          echo "<html><head><meta charset='utf-8'><title>AI apps — файлы</title>" >> index.html
+          echo "<style>body { font-family: sans-serif; padding: 20px; }</style></head><body>" >> index.html
+          echo "<h1>Файлы в этом репозитории</h1><ul>" >> index.html
+          find . -type f \
+            ! -name "index.html" \
+            ! -path "./.git/*" \
+            ! -path "./.github/*" \
+            -print0 | sort -z | while IFS= read -r -d '' file; do
+              basename=$(basename "$file")
+              echo "<li><a href=\"$basename\">$basename</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
 
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
       - name: Commit and push if changed
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
           git add index.html
           if ! git diff --cached --quiet; then
             git commit -m "Auto-generate file listing"
             git push
+          else
+            echo "No changes to index.html"
           fi
